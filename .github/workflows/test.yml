@@ -1,0 +1,64 @@
+name: Run Tests
+on:
+    push:
+        branches:
+            - master
+    pull_request:
+        branches:
+            - master
+env:
+    REPO_URL: https://github.com/jruiz16/todoism-test.git
+    WORKING_DIR: todoism-test
+jobs:
+    run-tests:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout Flask app repo
+              uses: actions/checkout@v3
+            
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                python-version: '3.11'
+
+            - name: Install Flask app dependencies
+              run: |
+                python -m venv venv
+                source venv/bin/activate
+                pip install -r requirements.txt
+            - name: Run Flask app
+              run: |
+                source venv/bin/activate
+                flask initdb
+                flask translate compile
+                nohup flask run > flask.log 2>&1 &
+
+            - name: Checkout tests repo
+              run: git clone $REPO_URL
+
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                node-version: lts/*
+
+            - name: Install dependencies
+              run: |
+                cd todoism-eafit-tests
+                npm ci
+
+            - name: Install Playwright Browsers
+              run: npx playwright install --with-deps
+
+            - name: Run Playwright tests
+              run: |
+                cd $WORKING_DIR
+                npx playwright test todolist.spec.ts
+
+            - name: Upload Artifact
+              uses: actions/upload-artifact@v4
+              if: ${{ !cancelled() }}
+              with:
+                name: $WORKING_DIR
+                path: $WORKING_DIR/playwright-report/
+                retention-days: 30
