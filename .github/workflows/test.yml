@@ -33,7 +33,16 @@ jobs:
                 source venv/bin/activate
                 flask initdb
                 flask translate compile
-                nohup flask run > flask.log 2>&1 &
+                nohup flask run --host=0.0.0.0 > flask.log 2>&1 &
+                sleep 5  # Espera a que la aplicación inicie
+                # Verificar que la aplicación está corriendo
+                if ! curl -s http://localhost:5000 >/dev/null; then
+                  echo "La aplicación Flask no está corriendo. Mostrando logs:"
+                  cat flask.log
+                  exit 1
+                else
+                  echo "La aplicación Flask está corriendo correctamente."
+                fi
 
             - name: Checkout tests repo
               run: git clone $REPO_URL
