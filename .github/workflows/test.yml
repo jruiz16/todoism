@@ -63,7 +63,7 @@ jobs:
             - name: Run Playwright tests
               run: |
                 cd $WORKING_DIR
-                npx playwright test todolist.spec.ts
+                npx playwright test todolist.spec.ts --trace on
 
             - name: Upload Artifact
               uses: actions/upload-artifact@v4
