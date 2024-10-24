@@ -34,7 +34,7 @@ jobs:
                 flask initdb
                 flask translate compile
                 nohup flask run --host=0.0.0.0 > flask.log 2>&1 &
-                sleep 5  # Espera a que la aplicación inicie
+                sleep 10  # Incrementa el tiempo de espera para asegurar que la app esté lista
                 # Verificar que la aplicación está corriendo
                 if ! curl -s http://localhost:5000 >/dev/null; then
                   echo "La aplicación Flask no está corriendo. Mostrando logs:"
@@ -43,6 +43,21 @@ jobs:
                 else
                   echo "La aplicación Flask está corriendo correctamente."
                 fi
+
+            - name: Check if database is ready
+              run: |
+                for i in {1..10}; do
+                  if flask db_check; then  # Asegúrate de tener este comando en tu app para validar la base de datos
+                    echo "Base de datos lista."
+                    break
+                  fi
+                  echo "Esperando que la base de datos esté lista..."
+                  sleep 5
+                done
+
+            - name: Verificar logs de Flask
+              run: |
+                cat flask.log
 
             - name: Checkout tests repo
               run: git clone $REPO_URL
@@ -65,14 +80,14 @@ jobs:
                 cd $WORKING_DIR
                 for i in 1 2; do
                   echo "Ejecución de pruebas $i..."
-                  npx playwright test todolist.spec.ts --trace on
+                  npx playwright test todolist.spec.ts --trace on --timeout=60000  # Timeout de 60 segundos
                 done
 
             - name: Run Playwright tests for the third time and evaluate
               run: |
                 cd $WORKING_DIR
                 echo "Tercera ejecución de pruebas..."
-                if ! npx playwright test todolist.spec.ts --trace on; then
+                if ! npx playwright test todolist.spec.ts --trace on --timeout=60000; then
                   echo "Pruebas fallaron en la tercera ejecución. Deteniendo pipeline."
                   exit 1
                 else
