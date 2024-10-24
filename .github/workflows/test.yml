@@ -27,6 +27,7 @@ jobs:
                 python -m venv venv
                 source venv/bin/activate
                 pip install -r requirements.txt
+
             - name: Run Flask app
               run: |
                 source venv/bin/activate
@@ -44,7 +45,7 @@ jobs:
 
             - name: Install dependencies
               run: |
-                cd todoism-eafit-tests
+                cd $WORKING_DIR
                 npm ci
 
             - name: Install Playwright Browsers
