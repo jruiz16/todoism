@@ -60,10 +60,24 @@ jobs:
             - name: Install Playwright Browsers
               run: npx playwright install --with-deps
 
-            - name: Run Playwright tests
+            - name: Run Playwright tests twice without evaluation
               run: |
                 cd $WORKING_DIR
-                npx playwright test todolist.spec.ts --trace on
+                for i in 1 2; do
+                  echo "Ejecución de pruebas $i..."
+                  npx playwright test todolist.spec.ts --trace on
+                done
+
+            - name: Run Playwright tests for the third time and evaluate
+              run: |
+                cd $WORKING_DIR
+                echo "Tercera ejecución de pruebas..."
+                if ! npx playwright test todolist.spec.ts --trace on; then
+                  echo "Pruebas fallaron en la tercera ejecución. Deteniendo pipeline."
+                  exit 1
+                else
+                  echo "Pruebas exitosas en la tercera ejecución."
+                fi
 
             - name: Upload Artifact
               uses: actions/upload-artifact@v4
