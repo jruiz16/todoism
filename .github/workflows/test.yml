@@ -30,11 +30,11 @@ jobs:
 
             - name: Run Flask app
               run: |
-                source venv/bin/activate
+                source venv/bin/activate  # Activar entorno virtual
                 flask initdb
                 flask translate compile
                 nohup flask run --host=0.0.0.0 > flask.log 2>&1 &
-                sleep 10  # Incrementa el tiempo de espera para asegurar que la app esté lista
+                sleep 10  # Aumentar tiempo de espera para que la app esté lista
                 # Verificar que la aplicación está corriendo
                 if ! curl -s http://localhost:5000 >/dev/null; then
                   echo "La aplicación Flask no está corriendo. Mostrando logs:"
@@ -46,8 +46,9 @@ jobs:
 
             - name: Check if database is ready
               run: |
+                source venv/bin/activate  # Asegurarse de activar el entorno virtual
                 for i in {1..10}; do
-                  if flask db_check; then  # Asegúrate de tener este comando en tu app para validar la base de datos
+                  if flask db_check; then  # Comando que verifica la base de datos
                     echo "Base de datos lista."
                     break
                   fi
