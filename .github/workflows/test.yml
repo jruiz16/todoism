@@ -1,64 +1,88 @@
 name: Run Tests
-
 on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
-
+    push:
+        branches:
+            - master
+    pull_request:
+        branches:
+            - master
+env:
+    REPO_URL: https://github.com/jruiz16/todoism-test.git
+    WORKING_DIR: todoism-test
 jobs:
-  run-tests:
-    runs-on: ubuntu-latest
+    run-tests:
+        runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout Flask app repo
-        uses: actions/checkout@v3
+        steps:
+            - name: Checkout Flask app repo 
+              uses: actions/checkout@v3
+            
+            - name: Set up Python
+              uses: actions/setup-python@v4
+              with:
+                python-version: '3.11'
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+            - name: Install Flask app dependencies
+              run: |
+                python -m venv venv
+                source venv/bin/activate
+                pip install -r requirements.txt
 
-      - name: Install Flask app dependencies
-        run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install -r requirements.txt
+            - name: Run Flask app
+              run: |
+                source venv/bin/activate
+                flask initdb
+                flask translate compile
+                nohup flask run --host=0.0.0.0 > flask.log 2>&1 &
+                sleep 5  # Espera a que la aplicación inicie
+                # Verificar que la aplicación está corriendo
+                if ! curl -s http://localhost:5000 >/dev/null; then
+                  echo "La aplicación Flask no está corriendo. Mostrando logs:"
+                  cat flask.log
+                  exit 1
+                else
+                  echo "La aplicación Flask está corriendo correctamente."
+                fi
 
-      - name: Run Flask app
-        run: |
-          source venv/bin/activate
-          flask initdb
-          flask translate compile
-          nohup flask run > flask.log 2>&1 &
+            - name: Checkout tests repo
+              run: git clone $REPO_URL
 
-      - name: Checkout tests repo
-        run: git clone https://github.com/jruiz16/todoism-test.git
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                node-version: lts/*
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: lts/*
+            - name: Install dependencies
+              run: |
+                cd $WORKING_DIR
+                npm ci
 
-      - name: Install dependencies
-        run: | 
-          cd todoism-test
-          npm ci
+            - name: Install Playwright Browsers
+              run: npx playwright install --with-deps
 
-      - name: Install Playwright Browsers
-        run: npx playwright install --with-deps
+            - name: Run Playwright tests twice without evaluation
+              run: |
+                cd $WORKING_DIR
+                for i in 1 2; do
+                  echo "Ejecución de pruebas $i..."
+                  npx playwright test todolist.spec.ts --trace on --timeout=60000  # Timeout de 60 segundos
+                done
 
-      - name: Run Playwright tests
-        run: |
-          cd todoism-test
-          npx playwright test todolist.spec.ts
+            - name: Run Playwright tests for the third time and evaluate
+              run: |
+                cd $WORKING_DIR
+                echo "Tercera ejecución de pruebas..."
+                if ! npx playwright test todolist.spec.ts --trace on --timeout=60000; then
+                  echo "Pruebas fallaron en la tercera ejecución. Deteniendo pipeline."
+                  exit 1
+                else
+                  echo "Pruebas exitosas en la tercera ejecución."
+                fi
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        if: ${{ !cancelled() }}
-        with:
-          name: playwright-report
-          path: todoism-test/playwright-report/
-          retention-days: 30
+            - name: Upload Artifact
+              uses: actions/upload-artifact@v4
+              if: ${{ !cancelled() }}
+              with:
+                name: $WORKING_DIR
+                path: $WORKING_DIR/playwright-report/
+                retention-days: 30
